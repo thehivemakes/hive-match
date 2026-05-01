@@ -2,368 +2,1261 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0d0d1a">
+    <meta name="description" content="Hive Match — a daily match-3 puzzle. One board a day, same for everyone. Build your streak.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hive Match">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <title>Hive Match</title>
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; background-color: #0d0d1a; color: #f0a500; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
-        #header { text-align: center; margin-bottom: 10px; }
-        h1 { margin: 0 0 4px; font-size: 1.8rem; }
-        #board-container { background-color: #1a1a2e; border-radius: 12px; padding: 8px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: min(calc(100vw - 32px), 380px); box-sizing: border-box; }
-        .tile { background-color: #333; color: white; border-radius: 8px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: bold; cursor: pointer; position: relative; user-select: none; box-sizing: border-box; border: 2px solid transparent; transition: border 150ms, transform 150ms; }
-        .tile[data-type="0"] { background-color: #e74c3c; }
-        .tile[data-type="1"] { background-color: #3498db; }
-        .tile[data-type="2"] { background-color: #f1c40f; color: #333; }
-        .tile[data-type="3"] { background-color: #2ecc71; }
-        .tile[data-type="4"] { background-color: #9b59b6; }
-        .tile.selected { border: 2px solid white; transform: scale(1.08); }
-        .tile.target { border: 2px solid #f0a500; box-shadow: 0 0 10px #f0a500; }
-        .tile.bomb { background-color: #444; }
-        .tile.rainbow { background: linear-gradient(135deg, #e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6); }
-        .badge { position: absolute; top: 1px; right: 3px; font-size: 0.65rem; color: #f0a500; }
-        #stats { margin: 8px 0; font-size: 0.9rem; }
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); color: #f0a500; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; gap: 12px; text-align: center; padding: 24px; }
-        #overlay.visible { display: flex; }
-        #overlay h2 { margin: 0; font-size: 2rem; }
-        #overlay .stars { font-size: 2rem; }
-        .gold-btn { background: #f0a500; border: none; padding: 12px 28px; cursor: pointer; color: #1a1a2e; font-weight: bold; font-size: 1rem; border-radius: 8px; margin-top: 4px; }
-        #countdown { font-size: 0.85rem; opacity: 0.8; }
+        :root {
+            /* Theme variables — overridden by data-theme on <body> */
+            --bg: #0d0d1a;
+            --panel: #1a1a2e;
+            --gold: #f0a500;
+            --gold-soft: #c98d00;
+            --text: #f0a500;
+            --text-dim: #b88600;
+            --tile-text: #ffffff;
+            --t0: #e74c3c; --t1: #3498db; --t2: #f1c40f; --t3: #2ecc71; --t4: #9b59b6;
+            --t2-text: #333333;
+            --target-glow: #f0a500;
+            --tile-radius: 8px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        body[data-theme="sunset"] {
+            --bg: #2b1932; --panel: #3d2547; --gold: #ffd6a5; --gold-soft: #e8b07a;
+            --text: #ffd6a5; --text-dim: #c89b71;
+            --t0: #ff8a65; --t1: #ce93d8; --t2: #fff59d; --t3: #80cbc4; --t4: #f48fb1;
+            --t2-text: #5c4500; --target-glow: #ffe0b2;
+        }
+        body[data-theme="honey"] {
+            --bg: #2a1a04; --panel: #4a2e08; --gold: #ffc94a; --gold-soft: #c98d00;
+            --text: #ffc94a; --text-dim: #b8870a;
+            --t0: #ff7043; --t1: #ffd54f; --t2: #fff176; --t3: #d4a017; --t4: #8d6e63;
+            --t2-text: #4a3300; --target-glow: #ffd54f;
+        }
+        body[data-theme="mint"] {
+            --bg: #062028; --panel: #0d3540; --gold: #80deea; --gold-soft: #4fb3bf;
+            --text: #80deea; --text-dim: #4fa3a8;
+            --t0: #80cbc4; --t1: #b3e5fc; --t2: #fff9c4; --t3: #c5e1a5; --t4: #e1bee7;
+            --t2-text: #4a4500; --target-glow: #b3e5fc;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { overscroll-behavior: none; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: calc(8px + var(--safe-top)) 12px calc(8px + var(--safe-bottom));
+            transition: background-color 280ms, color 280ms;
+        }
+        html { background-color: var(--bg); }
+        button { font-family: inherit; cursor: pointer; }
+        button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+        /* === Top bar === */
+        #topbar {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; max-width: 420px; margin-bottom: 6px;
+        }
+        .icon-btn {
+            background: transparent; border: 1.5px solid var(--gold-soft); color: var(--gold);
+            width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 150ms, transform 150ms;
+        }
+        .icon-btn:active { transform: scale(0.92); }
+        .icon-btn:hover { background: rgba(240,165,0,0.1); }
+        #topbar .pro-badge { font-size: 0.62rem; padding: 2px 6px; border-radius: 4px;
+            background: var(--gold); color: var(--bg); font-weight: bold; margin-left: 4px; display:none; }
+        body.pro #topbar .pro-badge { display: inline-block; }
+
+        /* === Header === */
+        #header { text-align: center; margin-bottom: 6px; }
+        h1 { margin: 0 0 2px; font-size: 1.5rem; letter-spacing: 0.5px; }
+        #subhead { font-size: 0.85rem; color: var(--text-dim); }
+        body.practice #practice-banner { display: block; }
+        #practice-banner {
+            display: none; background: var(--panel); padding: 6px 10px; border-radius: 6px;
+            margin-bottom: 6px; font-size: 0.78rem; color: var(--text-dim);
+        }
+
+        /* === Stats row === */
+        #stats {
+            display: flex; gap: 12px; margin: 6px 0; font-size: 0.88rem;
+            align-items: center; justify-content: center; flex-wrap: wrap;
+        }
+        #stats .pill { background: var(--panel); padding: 5px 10px; border-radius: 12px; }
+        #hint-btn {
+            background: var(--panel); border: 1.5px solid var(--gold-soft); color: var(--gold);
+            padding: 5px 12px; border-radius: 12px; font-size: 0.85rem;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        #hint-btn:disabled { opacity: 0.4; }
+
+        /* === Board === */
+        #board-container {
+            background: var(--panel); border-radius: 14px; padding: 8px;
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;
+            width: min(calc(100vw - 28px), 380px); box-sizing: border-box;
+            touch-action: none;
+        }
+        .tile {
+            background: #333; color: var(--tile-text); border-radius: var(--tile-radius);
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 1.45rem; font-weight: bold; cursor: pointer; position: relative;
+            user-select: none; box-sizing: border-box; border: 2.5px solid transparent;
+            transition: border 150ms, transform 150ms, box-shadow 200ms;
+            min-height: 36px;
+        }
+        .tile[data-type="0"] { background: var(--t0); }
+        .tile[data-type="1"] { background: var(--t1); }
+        .tile[data-type="2"] { background: var(--t2); color: var(--t2-text); }
+        .tile[data-type="3"] { background: var(--t3); }
+        .tile[data-type="4"] { background: var(--t4); }
+        .tile.selected { border-color: white; transform: scale(1.08); }
+        .tile.target { border-color: var(--gold); box-shadow: 0 0 12px var(--target-glow); }
+        .tile.hint { animation: hint-pulse 1.4s ease-in-out 2; }
+        .badge { position: absolute; top: 1px; right: 3px; font-size: 0.65rem; color: var(--gold); }
+
+        /* === Animations === */
         @keyframes tile-clear { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.5); } }
         @keyframes tile-fall { from { transform: translateY(-60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes tile-invalid { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+        @keyframes hint-pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.0); transform: scale(1); }
+            50% { box-shadow: 0 0 18px 3px rgba(255,255,255,0.6); transform: scale(1.06); }
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .clearing { animation: tile-clear 0.3s ease forwards; }
         .falling { animation: tile-fall 0.3s ease-out forwards; }
         .invalid-swap { animation: tile-invalid 0.25s ease; }
+
+        /* === Modal === */
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center;
+            z-index: 100; padding: 16px; padding-top: calc(16px + var(--safe-top));
+            padding-bottom: calc(16px + var(--safe-bottom));
+        }
+        .modal-backdrop.visible { display: flex; }
+        .modal {
+            background: var(--panel); color: var(--text); border-radius: 14px;
+            padding: 22px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto;
+            position: relative; border: 1px solid var(--gold-soft);
+        }
+        .modal h2 { margin: 0 0 12px; font-size: 1.4rem; }
+        .modal h3 { margin: 14px 0 6px; font-size: 1rem; }
+        .modal p, .modal li { font-size: 0.92rem; line-height: 1.45; color: var(--text-dim); }
+        .modal ul { padding-left: 18px; margin: 6px 0; }
+        .modal-close {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; border: none; color: var(--text-dim);
+            font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 4px 8px;
+        }
+        .modal-close:hover { color: var(--gold); }
+
+        /* === Buttons === */
+        .gold-btn {
+            background: var(--gold); border: none; padding: 12px 22px;
+            color: var(--bg); font-weight: bold; font-size: 0.95rem; border-radius: 10px;
+            transition: transform 100ms;
+        }
+        .gold-btn:active { transform: scale(0.97); }
+        .gold-btn:disabled { opacity: 0.5; }
+        .ghost-btn {
+            background: transparent; border: 1.5px solid var(--gold-soft); color: var(--gold);
+            padding: 10px 18px; border-radius: 10px; font-size: 0.92rem;
+        }
+        .ghost-btn:hover { background: rgba(240,165,0,0.08); }
+
+        /* === Win/Lose overlay === */
+        #overlay-content { text-align: center; }
+        #overlay-content h2 { font-size: 1.8rem; margin-bottom: 6px; }
+        #overlay-content .stars { font-size: 2rem; margin: 4px 0; }
+        #overlay-content #countdown { font-size: 0.85rem; opacity: 0.85; margin-top: 10px; }
+        #overlay-content #streak-display { font-size: 0.95rem; margin: 4px 0; }
+        #overlay-content .button-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+
+        /* === Stats modal === */
+        #stats-modal h3 { margin-top: 16px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 6px 0; }
+        .stat-card { background: rgba(255,255,255,0.04); padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-card .num { font-size: 1.5rem; font-weight: bold; color: var(--gold); }
+        .stat-card .lbl { font-size: 0.75rem; color: var(--text-dim); }
+        #move-distribution .row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin: 3px 0; }
+        #move-distribution .bar { flex: 1; background: rgba(255,255,255,0.06); border-radius: 4px; height: 14px; overflow: hidden; }
+        #move-distribution .bar-fill { height: 100%; background: var(--gold); transition: width 300ms; }
+        #heatmap { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; margin: 6px 0; }
+        #heatmap .cell { aspect-ratio: 1; border-radius: 3px; background: rgba(255,255,255,0.06); font-size: 0; }
+        #heatmap .cell.played { background: var(--gold-soft); }
+        #heatmap .cell.won { background: var(--gold); }
+        #heatmap .cell.future { background: rgba(255,255,255,0.02); }
+        #heatmap .cell.today { outline: 2px solid white; outline-offset: 1px; }
+        .archive-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .archive-row input { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--gold-soft);
+            background: rgba(0,0,0,0.3); color: var(--text); font-family: inherit; font-size: 0.9rem; }
+        .theme-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0; }
+        .theme-swatch { aspect-ratio: 1; border-radius: 10px; cursor: pointer; position: relative;
+            display: flex; align-items: flex-end; justify-content: center; padding: 4px;
+            font-size: 0.7rem; color: white; text-shadow: 0 1px 2px black;
+            border: 2px solid transparent;
+        }
+        .theme-swatch.active { border-color: white; }
+        .theme-swatch.locked::after { content: '🔒'; position: absolute; top: 4px; right: 4px; font-size: 0.85rem; }
+        .theme-swatch[data-key="default"] { background: linear-gradient(135deg, #e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6); }
+        .theme-swatch[data-key="sunset"] { background: linear-gradient(135deg, #ff8a65, #fff59d, #80cbc4, #ce93d8, #f48fb1); }
+        .theme-swatch[data-key="honey"] { background: linear-gradient(135deg, #ff7043, #ffd54f, #fff176, #d4a017, #8d6e63); }
+        .theme-swatch[data-key="mint"] { background: linear-gradient(135deg, #80cbc4, #b3e5fc, #fff9c4, #c5e1a5, #e1bee7); }
+
+        /* === Achievement toast === */
+        #toast {
+            position: fixed; bottom: calc(20px + var(--safe-bottom)); left: 50%;
+            transform: translateX(-50%); background: var(--panel); color: var(--gold);
+            padding: 12px 18px; border-radius: 12px; border: 1.5px solid var(--gold);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 200;
+            display: none; animation: toast-in 300ms ease-out;
+            font-size: 0.92rem; max-width: 88vw; text-align: center;
+        }
+        #toast.visible { display: block; }
+
+        /* === Footer === */
+        #footer {
+            margin-top: 16px; font-size: 0.78rem; color: var(--text-dim);
+            text-align: center; max-width: 420px;
+        }
+        #footer a { color: var(--gold-soft); text-decoration: none; }
+        #footer a:hover { color: var(--gold); }
+        .mode-toggle {
+            display: inline-flex; gap: 4px; background: rgba(0,0,0,0.3);
+            border-radius: 20px; padding: 3px; margin-bottom: 8px;
+        }
+        .mode-toggle button {
+            background: transparent; border: none; color: var(--text-dim);
+            padding: 6px 14px; border-radius: 16px; font-size: 0.82rem;
+        }
+        .mode-toggle button.active { background: var(--gold); color: var(--bg); }
+
+        /* === Light mode preference === */
+        @media (prefers-color-scheme: light) {
+            body:not([data-theme]):not(.locked-dark) {
+                /* Hive Match keeps dark — game mood. Just respect status bar. */
+            }
+        }
+
+        /* === Reduced motion === */
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
     </style>
 </head>
 <body>
+    <div id="topbar">
+        <button class="icon-btn" id="help-btn" aria-label="How to play">?</button>
+        <div style="font-weight:bold; font-size: 1.1rem;">🐝 HIVE MATCH<span class="pro-badge">PRO</span></div>
+        <button class="icon-btn" id="stats-btn" aria-label="Stats and settings">⚙</button>
+    </div>
+    <div id="practice-banner">🎯 Practice Mode — does not affect daily streak</div>
     <div id="header">
-        <h1>🐝 HIVE MATCH</h1>
-        <div>Day <span id="day-number"></span> · 🔥 <span id="streak">0</span> day streak</div>
+        <div id="subhead">Day <span id="day-number">1</span> · 🔥 <span id="streak">0</span> day streak</div>
     </div>
-    <div id="stats">Moves: <span id="moves-used">0</span>/45 · Targets: <span id="targets-remaining">5</span>/5</div>
-    <div id="board-container"></div>
-    <div id="overlay">
-        <h2 id="overlay-title">🐝 Hive Match</h2>
-        <div id="overlay-day"></div>
-        <div class="stars" id="overlay-stars"></div>
-        <div id="overlay-result"></div>
-        <button class="gold-btn" id="share-button">Share Result</button>
-        <div id="countdown"></div>
-        <div id="streak-display"></div>
+    <div id="stats" role="status" aria-live="polite">
+        <span class="pill">Moves: <span id="moves-used">0</span>/45</span>
+        <span class="pill">Targets: <span id="targets-remaining">5</span>/5</span>
+        <button id="hint-btn" aria-label="Get a hint">💡 <span id="hint-count">1</span></button>
     </div>
+    <div id="board-container" role="grid" aria-label="Match-3 board"></div>
+
+    <div id="footer">
+        <div class="mode-toggle">
+            <button id="mode-daily" class="active">Daily</button>
+            <button id="mode-practice">Practice</button>
+        </div>
+        <div>
+            <a href="#" id="tip-jar">☕ Tip jar</a> ·
+            <a href="#" id="footer-pro">Unlock Pro</a> ·
+            <a href="https://github.com/thehivemakes/hive-match" target="_blank" rel="noopener">GitHub</a>
+        </div>
+    </div>
+
+    <!-- ========== Welcome modal (first run) ========== -->
+    <div class="modal-backdrop" id="welcome-modal">
+        <div class="modal">
+            <h2>🐝 Welcome to Hive Match</h2>
+            <p>One puzzle a day. Same board for everyone in the world.</p>
+            <h3>How to play</h3>
+            <ul>
+                <li><b>Tap two adjacent tiles</b> to swap them.</li>
+                <li><b>Match 3 or more</b> of the same shape (in a row or column) to clear them.</li>
+                <li><b>Clear all 5 glowing target tiles</b> ★ within 45 moves to win.</li>
+                <li><b>Build a streak</b> by playing every day — your progress is saved on this device.</li>
+            </ul>
+            <h3>Stuck?</h3>
+            <p>Tap 💡 for a free hint. (1 free hint per puzzle.)</p>
+            <div style="margin-top: 16px; text-align: center;">
+                <button class="gold-btn" id="welcome-start">Let's play</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Help modal ========== -->
+    <div class="modal-backdrop" id="help-modal">
+        <div class="modal">
+            <button class="modal-close" data-close>✕</button>
+            <h2>How to play</h2>
+            <ul>
+                <li><b>Tap two adjacent tiles</b> to swap them.</li>
+                <li><b>Match 3 or more</b> of the same shape in a row or column.</li>
+                <li><b>Clear all 5 ★ targets</b> within 45 moves to win.</li>
+                <li><b>3 stars</b>: solve in ≤20 moves. <b>2 stars</b>: ≤30. <b>1 star</b>: more.</li>
+            </ul>
+            <h3>Hints</h3>
+            <p>💡 reveals a possible match. 1 free hint per puzzle. Pro: unlimited hints.</p>
+            <h3>Practice mode</h3>
+            <p>Random unlimited boards. Doesn't affect your daily streak — perfect for warming up.</p>
+        </div>
+    </div>
+
+    <!-- ========== Stats / Settings modal ========== -->
+    <div class="modal-backdrop" id="stats-modal-bg">
+        <div class="modal" id="stats-modal">
+            <button class="modal-close" data-close>✕</button>
+            <h2>📊 Your stats</h2>
+            <div class="stat-grid">
+                <div class="stat-card"><div class="num" id="s-played">0</div><div class="lbl">Played</div></div>
+                <div class="stat-card"><div class="num" id="s-winrate">0%</div><div class="lbl">Win rate</div></div>
+                <div class="stat-card"><div class="num" id="s-streak">0</div><div class="lbl">Current streak</div></div>
+                <div class="stat-card"><div class="num" id="s-max">0</div><div class="lbl">Max streak</div></div>
+            </div>
+
+            <h3>Move distribution</h3>
+            <div id="move-distribution"></div>
+
+            <h3>Last 30 days</h3>
+            <div id="heatmap" aria-label="30-day play heatmap"></div>
+
+            <h3>Replay a past day</h3>
+            <div class="archive-row">
+                <input type="date" id="archive-date" max="">
+                <button class="ghost-btn" id="archive-go">Replay</button>
+            </div>
+
+            <h3>Theme</h3>
+            <div class="theme-picker" id="theme-picker">
+                <div class="theme-swatch" data-key="default">Default</div>
+                <div class="theme-swatch" data-key="sunset">Sunset</div>
+                <div class="theme-swatch locked" data-key="honey" data-pro="1">Honey</div>
+                <div class="theme-swatch locked" data-key="mint" data-pro="1">Mint</div>
+            </div>
+
+            <h3>Sound &amp; haptics</h3>
+            <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                <button class="ghost-btn" id="toggle-sound">🔊 Sound: on</button>
+                <button class="ghost-btn" id="toggle-haptics">📳 Haptics: on</button>
+            </div>
+
+            <h3>Hive Match Pro</h3>
+            <p>Unlimited hints, premium themes, support development. <b>$4.99 — one-time, no subscription.</b></p>
+            <div style="display:flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                <button class="gold-btn" id="pro-buy">Get Pro</button>
+                <button class="ghost-btn" id="pro-redeem">I have a code</button>
+            </div>
+            <p id="pro-status" style="margin-top: 8px;"></p>
+        </div>
+    </div>
+
+    <!-- ========== Pro redeem modal ========== -->
+    <div class="modal-backdrop" id="redeem-modal">
+        <div class="modal">
+            <button class="modal-close" data-close>✕</button>
+            <h2>Enter your Pro code</h2>
+            <p>If you purchased Pro, paste your unlock code here.</p>
+            <div class="archive-row" style="margin-top: 10px;">
+                <input type="text" id="redeem-code" placeholder="HM-PRO-XXXXX" autocomplete="off" autocapitalize="characters">
+                <button class="gold-btn" id="redeem-go">Unlock</button>
+            </div>
+            <p id="redeem-status" style="margin-top: 10px; font-size: 0.85rem;"></p>
+        </div>
+    </div>
+
+    <!-- ========== Win/Lose overlay ========== -->
+    <div class="modal-backdrop" id="overlay">
+        <div class="modal">
+            <div id="overlay-content">
+                <h2 id="overlay-title">🎉 You Win!</h2>
+                <div id="overlay-day"></div>
+                <div class="stars" id="overlay-stars"></div>
+                <div id="overlay-result"></div>
+                <div id="streak-display"></div>
+                <div class="button-row">
+                    <button class="gold-btn" id="share-button">Share</button>
+                    <button class="ghost-btn" id="overlay-stats">📊 Stats</button>
+                </div>
+                <div id="countdown"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Achievement toast ========== -->
+    <div id="toast" role="alert"></div>
+
     <script>
-        // === PRNG ===
-        function mulberry32(a) {
-            return function() {
-                a |= 0; a = a + 0x6D2B79F5 | 0;
-                var t = Math.imul(a ^ a >>> 15, 1 | a);
-                t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-                return ((t ^ t >>> 14) >>> 0) / 4294967296;
-            }
-        }
-        function getTodayUTC() { return new Date().toISOString().split('T')[0]; }
-        function getSeed() { return parseInt(getTodayUTC().replace(/-/g,'')); }
-        function getDayNumber() {
-            const epoch = new Date('2026-04-30T00:00:00Z');
-            const today = new Date(getTodayUTC() + 'T00:00:00Z');
-            return Math.max(1, Math.floor((today - epoch) / 86400000) + 1);
-        }
-        function getStars(moves) {
-            if (moves <= 20) return '⭐⭐⭐';
-            if (moves <= 30) return '⭐⭐';
-            return '⭐';
-        }
+    'use strict';
 
-        // === STATE ===
-        const COLS = 7, ROWS = 8, MAX_MOVES = 45, TARGET_COUNT = 5;
-        const TILE_SYMBOLS = ['●','■','▲','◆','⬡'];
-        let board = [], targetSet = new Set(), movesUsed = 0, targetsCleared = 0;
-        let selectedIdx = null, gameOver = false, inputLocked = false;
-        let repPool = [], repIdx = 0;
-        const rand = mulberry32(getSeed());
+    // ================== CONFIG ==================
+    const COLS = 7, ROWS = 8, MAX_MOVES = 45, TARGET_COUNT = 5;
+    const TILE_SYMBOLS = ['●','■','▲','◆','⬡'];
+    const TILE_LABELS = ['red circle','blue square','yellow triangle','green diamond','purple hex'];
+    const EPOCH = '2026-04-30T00:00:00Z';
 
-        // === BOARD GENERATION ===
-        function generateBoard() {
-            board = Array(COLS * ROWS).fill(0).map(() => Math.floor(rand() * TILE_SYMBOLS.length));
-            // Remove pre-existing matches so board starts clean
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    const idx = r * COLS + c;
-                    const forbidden = new Set();
-                    if (c >= 2 && board[idx-1] === board[idx-2]) forbidden.add(board[idx-1]);
-                    if (r >= 2 && board[idx-COLS] === board[idx-2*COLS]) forbidden.add(board[idx-COLS]);
-                    if (forbidden.has(board[idx])) {
-                        let t = (board[idx] + 1) % TILE_SYMBOLS.length;
-                        while (forbidden.has(t)) t = (t + 1) % TILE_SYMBOLS.length;
-                        board[idx] = t;
-                    }
+    // Pro unlock codes — honor system. Architect can add codes via Stripe success URL.
+    // Format: HM-PRO-XXXXX (5 alphanum after prefix)
+    const PRO_CODES = new Set([
+        'HM-PRO-2026A', 'HM-PRO-HONEY', 'HM-PRO-QUEEN', 'HM-PRO-NECTR', 'HM-PRO-COMB1'
+    ]);
+    // Architect: replace with your Stripe Payment Link URL.
+    // Set the success URL to: https://thehivemakes.github.io/hive-match/?unlock=HM-PRO-2026A
+    const STRIPE_URL = 'https://buy.stripe.com/REPLACE_WITH_YOUR_PAYMENT_LINK';
+    const TIP_JAR_URL = 'https://buymeacoffee.com/thehivemakes';
+
+    const PRO_THEMES = new Set(['honey', 'mint']);
+
+    // ================== STATE ==================
+    let board = [], targetSet = new Set(), repPool = [], repIdx = 0;
+    let movesUsed = 0, targetsCleared = 0;
+    let selectedIdx = null, gameOver = false, inputLocked = false;
+    let isPractice = false;
+    let practiceSeed = Math.floor(Math.random() * 4294967296);
+    let rand = null;
+    let hintsUsedToday = 0;
+    let idleTimer = null;
+
+    // ================== UTILS ==================
+    function mulberry32(a) {
+        return function() {
+            a |= 0; a = a + 0x6D2B79F5 | 0;
+            var t = Math.imul(a ^ a >>> 15, 1 | a);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+    const TODAY = () => new Date().toISOString().split('T')[0];
+    const dateToSeed = (d) => parseInt(d.replace(/-/g, ''));
+    function dayNumber(date) {
+        const epoch = new Date(EPOCH);
+        const t = new Date(date + 'T00:00:00Z');
+        return Math.max(1, Math.floor((t - epoch) / 86400000) + 1);
+    }
+    function isPro() { return localStorage.getItem('hm_pro') === '1'; }
+    function setPro(on) {
+        if (on) {
+            localStorage.setItem('hm_pro', '1');
+            document.body.classList.add('pro');
+        } else {
+            localStorage.removeItem('hm_pro');
+            document.body.classList.remove('pro');
+        }
+        updateProUI();
+        updateHintBtn();
+    }
+    function getStars(moves) {
+        if (moves <= 20) return '⭐⭐⭐';
+        if (moves <= 30) return '⭐⭐';
+        return '⭐';
+    }
+    function holidayThemeFor(date) {
+        // Auto-rotate theme by date for non-Pro users (subtle seasonal flavor without locking content)
+        const md = date.slice(5); // 'MM-DD'
+        // Stays default unless Architect wants to expand. Keeping minimal so the daily feels stable.
+        return null;
+    }
+
+    // ================== BOARD ==================
+    function generateBoard(seed) {
+        rand = mulberry32(seed);
+        board = Array(COLS * ROWS).fill(0).map(() => Math.floor(rand() * TILE_SYMBOLS.length));
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const idx = r * COLS + c;
+                const forbidden = new Set();
+                if (c >= 2 && board[idx-1] === board[idx-2]) forbidden.add(board[idx-1]);
+                if (r >= 2 && board[idx-COLS] === board[idx-2*COLS]) forbidden.add(board[idx-COLS]);
+                if (forbidden.has(board[idx])) {
+                    let t = (board[idx] + 1) % TILE_SYMBOLS.length;
+                    while (forbidden.has(t)) t = (t + 1) % TILE_SYMBOLS.length;
+                    board[idx] = t;
                 }
             }
-            targetSet = new Set();
-            // Place targets in rows 2-7 (not top 2 rows) so they're reachable
-            while (targetSet.size < TARGET_COUNT) {
-                const pos = Math.floor(rand() * (ROWS - 2) * COLS) + 2 * COLS;
-                targetSet.add(pos);
-            }
-            repPool = Array(300).fill(0).map(() => Math.floor(rand() * TILE_SYMBOLS.length));
-            repIdx = 0;
         }
+        targetSet = new Set();
+        while (targetSet.size < TARGET_COUNT) {
+            const pos = Math.floor(rand() * (ROWS - 2) * COLS) + 2 * COLS;
+            targetSet.add(pos);
+        }
+        // Ensure at least one valid swap exists from start (regenerate pool if not)
+        repPool = Array(400).fill(0).map(() => Math.floor(rand() * TILE_SYMBOLS.length));
+        repIdx = 0;
+        // If by bad luck no valid moves, add a known match — extremely rare with 7x8.
+        if (!findAnyValidSwap()) {
+            // Force a horizontal triple in row 1
+            const t = board[COLS];
+            board[COLS + 2] = t; board[COLS + 3] = t; board[COLS + 4] = t;
+        }
+    }
 
-        // === GAME LOGIC ===
-        function findAllMatches() {
-            const matches = new Set();
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    const idx = r * COLS + c;
-                    if (board[idx] === -1) continue;
-                    if (c < COLS - 2 && board[idx] === board[idx+1] && board[idx] === board[idx+2]) {
-                        matches.add(idx); matches.add(idx+1); matches.add(idx+2);
-                    }
-                    if (r < ROWS - 2 && board[idx] === board[idx+COLS] && board[idx] === board[idx+2*COLS]) {
-                        matches.add(idx); matches.add(idx+COLS); matches.add(idx+2*COLS);
-                    }
+    function findAllMatches() {
+        const matches = new Set();
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const idx = r * COLS + c;
+                if (board[idx] === -1) continue;
+                if (c < COLS - 2 && board[idx] === board[idx+1] && board[idx] === board[idx+2]) {
+                    matches.add(idx); matches.add(idx+1); matches.add(idx+2);
+                }
+                if (r < ROWS - 2 && board[idx] === board[idx+COLS] && board[idx] === board[idx+2*COLS]) {
+                    matches.add(idx); matches.add(idx+COLS); matches.add(idx+2*COLS);
                 }
             }
-            return matches;
         }
+        return matches;
+    }
 
-        // Returns true if move was valid (had matches), false if invalid
-        function tryMatch(swapIdx1, swapIdx2) {
-            const matches = findAllMatches();
-            if (matches.size === 0) {
-                // Swap back — invalid move
-                [board[swapIdx1], board[swapIdx2]] = [board[swapIdx2], board[swapIdx1]];
-                // Animate shake, then re-render the correct (reverted) state
-                const tiles = document.querySelectorAll('.tile');
-                [swapIdx1, swapIdx2].forEach(i => {
+    function findAnyValidSwap() {
+        // Try every adjacent swap; if it produces a match, return [a, b]
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const a = r * COLS + c;
+                // right neighbor
+                if (c < COLS - 1) {
+                    const b = a + 1;
+                    [board[a], board[b]] = [board[b], board[a]];
+                    if (findAllMatches().size > 0) {
+                        [board[a], board[b]] = [board[b], board[a]];
+                        return [a, b];
+                    }
+                    [board[a], board[b]] = [board[b], board[a]];
+                }
+                // down neighbor
+                if (r < ROWS - 1) {
+                    const b = a + COLS;
+                    [board[a], board[b]] = [board[b], board[a]];
+                    if (findAllMatches().size > 0) {
+                        [board[a], board[b]] = [board[b], board[a]];
+                        return [a, b];
+                    }
+                    [board[a], board[b]] = [board[b], board[a]];
+                }
+            }
+        }
+        return null;
+    }
+
+    // ================== GAME LOGIC ==================
+    function tryMatch(swapIdx1, swapIdx2) {
+        const matches = findAllMatches();
+        if (matches.size === 0) {
+            [board[swapIdx1], board[swapIdx2]] = [board[swapIdx2], board[swapIdx1]];
+            const tiles = document.querySelectorAll('.tile');
+            [swapIdx1, swapIdx2].forEach(i => {
+                if (tiles[i]) {
                     tiles[i].classList.add('invalid-swap');
                     tiles[i].addEventListener('animationend', () => tiles[i].classList.remove('invalid-swap'), { once: true });
-                });
-                setTimeout(() => renderBoard(), 280);
-                return false;
-            }
-            movesUsed++;
-            processMatches(matches, true);
-            return true;
-        }
-
-        function processMatches(matches, animate) {
-            inputLocked = true;
-            matches.forEach(idx => {
-                if (targetSet.has(idx)) { targetSet.delete(idx); targetsCleared++; }
-                board[idx] = -1;
-                if (animate) {
-                    const tiles = document.querySelectorAll('.tile');
-                    if (tiles[idx]) tiles[idx].classList.add('clearing');
                 }
             });
-            setTimeout(() => {
-                applyGravity();
-                renderBoard();
-                setTimeout(() => {
-                    const next = findAllMatches();
-                    if (next.size > 0) {
-                        processMatches(next, true);
-                    } else {
-                        inputLocked = false;
-                        checkGameEnd();
-                    }
-                }, 350);
-            }, 300);
+            audio.play('invalid');
+            setTimeout(() => renderBoard(), 280);
+            return false;
         }
+        movesUsed++;
+        audio.play('match');
+        haptic(15);
+        processMatches(matches, true);
+        resetIdleTimer();
+        return true;
+    }
 
-        function applyGravity() {
-            for (let c = 0; c < COLS; c++) {
-                let empty = 0;
-                for (let r = ROWS - 1; r >= 0; r--) {
-                    const idx = r * COLS + c;
-                    if (board[idx] === -1) {
-                        empty++;
-                    } else if (empty > 0) {
-                        board[idx + empty * COLS] = board[idx];
-                        board[idx] = -1;
-                    }
+    function processMatches(matches, animate) {
+        inputLocked = true;
+        matches.forEach(idx => {
+            if (targetSet.has(idx)) { targetSet.delete(idx); targetsCleared++; }
+            board[idx] = -1;
+            if (animate) {
+                const tiles = document.querySelectorAll('.tile');
+                if (tiles[idx]) tiles[idx].classList.add('clearing');
+            }
+        });
+        setTimeout(() => {
+            applyGravity();
+            renderBoard();
+            setTimeout(() => {
+                const next = findAllMatches();
+                if (next.size > 0) {
+                    audio.play('cascade');
+                    processMatches(next, true);
+                } else {
+                    inputLocked = false;
+                    checkGameEnd();
                 }
-                for (let r = 0; r < empty; r++) {
-                    board[r * COLS + c] = repPool[repIdx++ % repPool.length];
+            }, 320);
+        }, 280);
+    }
+
+    function applyGravity() {
+        for (let c = 0; c < COLS; c++) {
+            let empty = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                const idx = r * COLS + c;
+                if (board[idx] === -1) empty++;
+                else if (empty > 0) {
+                    board[idx + empty * COLS] = board[idx];
+                    board[idx] = -1;
                 }
             }
+            for (let r = 0; r < empty; r++) {
+                board[r * COLS + c] = repPool[repIdx++ % repPool.length];
+            }
         }
+    }
 
-        function checkGameEnd() {
-            if (targetsCleared >= TARGET_COUNT) win();
-            else if (movesUsed >= MAX_MOVES) lose();
-        }
+    function checkGameEnd() {
+        if (targetsCleared >= TARGET_COUNT) win();
+        else if (movesUsed >= MAX_MOVES) lose();
+    }
 
-        function win() {
-            gameOver = true;
-            const stars = getStars(movesUsed);
+    function win() {
+        gameOver = true;
+        const stars = getStars(movesUsed);
+        audio.play('win');
+        haptic([30, 40, 60]);
+        if (!isPractice) {
             saveTodayResult({ stars, moves: movesUsed, won: true });
-            updateStreak(true);
-            showOverlay(true, stars);
+            const newStreak = updateStreak(true);
+            checkAchievements(newStreak);
         }
+        showOverlay(true, stars);
+    }
 
-        function lose() {
-            gameOver = true;
+    function lose() {
+        gameOver = true;
+        audio.play('lose');
+        haptic(80);
+        if (!isPractice) {
             saveTodayResult({ stars: '💀', moves: movesUsed, won: false });
             updateStreak(false);
-            showOverlay(false, '💀');
         }
+        showOverlay(false, '💀');
+    }
 
-        // === PERSISTENCE ===
-        function saveTodayResult(result) {
-            localStorage.setItem('hm_todayResult', JSON.stringify({ date: getTodayUTC(), ...result }));
-        }
-
-        function loadTodayResult() {
-            try {
-                const r = JSON.parse(localStorage.getItem('hm_todayResult') || 'null');
-                return r && r.date === getTodayUTC() ? r : null;
-            } catch { return null; }
-        }
-
-        function updateStreak(won) {
-            const today = getTodayUTC();
-            const yesterday = new Date(); yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-            let lastPlayed = localStorage.getItem('hm_lastPlayed') || '';
-            let streak = parseInt(localStorage.getItem('hm_streak') || '0');
-            let maxStreak = parseInt(localStorage.getItem('hm_maxStreak') || '0');
-            let total = parseInt(localStorage.getItem('hm_total') || '0');
-
-            if (lastPlayed === yesterdayStr) streak = won ? streak + 1 : 0;
-            else if (lastPlayed !== today) streak = won ? 1 : 0;
-            if (won) maxStreak = Math.max(maxStreak, streak);
-
-            localStorage.setItem('hm_lastPlayed', today);
-            localStorage.setItem('hm_streak', streak);
-            localStorage.setItem('hm_maxStreak', maxStreak);
-            localStorage.setItem('hm_total', total + 1);
-            document.getElementById('streak').textContent = streak;
-        }
-
-        // === UI ===
-        function renderBoard() {
-            const container = document.getElementById('board-container');
-            container.innerHTML = '';
-            board.forEach((tile, idx) => {
-                const div = document.createElement('div');
-                div.className = 'tile';
-                if (tile !== -1) {
-                    div.dataset.type = tile;
-                    div.textContent = TILE_SYMBOLS[tile];
-                    if (tile === 2) div.style.color = '#333'; // yellow needs dark text
-                    if (targetSet.has(idx)) {
-                        div.classList.add('target');
-                        const badge = document.createElement('span');
-                        badge.className = 'badge'; badge.textContent = '★';
-                        div.appendChild(badge);
-                    }
-                    div.onclick = () => selectTile(idx);
+    // ================== RENDER ==================
+    function renderBoard() {
+        const c = document.getElementById('board-container');
+        c.innerHTML = '';
+        board.forEach((tile, idx) => {
+            const div = document.createElement('div');
+            div.className = 'tile';
+            div.setAttribute('role', 'gridcell');
+            if (tile !== -1) {
+                div.dataset.type = tile;
+                div.textContent = TILE_SYMBOLS[tile];
+                div.setAttribute('aria-label', TILE_LABELS[tile] + (targetSet.has(idx) ? ' target' : ''));
+                if (targetSet.has(idx)) {
+                    div.classList.add('target');
+                    const badge = document.createElement('span');
+                    badge.className = 'badge'; badge.textContent = '★';
+                    badge.setAttribute('aria-hidden', 'true');
+                    div.appendChild(badge);
                 }
-                container.appendChild(div);
-            });
-            document.getElementById('moves-used').textContent = movesUsed;
-            document.getElementById('targets-remaining').textContent = TARGET_COUNT - targetsCleared;
-        }
+                div.onclick = () => selectTile(idx);
+            }
+            c.appendChild(div);
+        });
+        document.getElementById('moves-used').textContent = movesUsed;
+        document.getElementById('targets-remaining').textContent = TARGET_COUNT - targetsCleared;
+    }
 
-        function selectTile(idx) {
-            if (gameOver || inputLocked) return;
-            const tiles = document.querySelectorAll('.tile');
-            if (selectedIdx === null) {
+    function selectTile(idx) {
+        if (gameOver || inputLocked) return;
+        resetIdleTimer();
+        const tiles = document.querySelectorAll('.tile');
+        if (selectedIdx === null) {
+            selectedIdx = idx;
+            audio.play('select');
+            if (tiles[idx]) tiles[idx].classList.add('selected');
+        } else {
+            const prev = selectedIdx;
+            if (tiles[prev]) tiles[prev].classList.remove('selected');
+            selectedIdx = null;
+            if (prev === idx) return;
+            if (isAdjacent(prev, idx)) {
+                [board[prev], board[idx]] = [board[idx], board[prev]];
+                renderBoard();
+                tryMatch(prev, idx);
+            } else {
                 selectedIdx = idx;
                 if (tiles[idx]) tiles[idx].classList.add('selected');
-            } else {
-                const prev = selectedIdx;
-                // Deselect first
-                if (tiles[prev]) tiles[prev].classList.remove('selected');
-                selectedIdx = null;
-                if (prev === idx) return; // tapped same tile
-                if (isAdjacent(prev, idx)) {
-                    [board[prev], board[idx]] = [board[idx], board[prev]];
-                    renderBoard();
-                    tryMatch(prev, idx);
-                } else {
-                    // Select new tile instead
-                    selectedIdx = idx;
-                    if (tiles[idx]) tiles[idx].classList.add('selected');
-                }
+                audio.play('select');
             }
         }
+    }
 
-        function isAdjacent(idx1, idx2) {
-            const r1 = Math.floor(idx1/COLS), c1 = idx1%COLS;
-            const r2 = Math.floor(idx2/COLS), c2 = idx2%COLS;
-            return (Math.abs(r1-r2)===1 && c1===c2) || (Math.abs(c1-c2)===1 && r1===r2);
+    function isAdjacent(idx1, idx2) {
+        const r1 = Math.floor(idx1 / COLS), c1 = idx1 % COLS;
+        const r2 = Math.floor(idx2 / COLS), c2 = idx2 % COLS;
+        return (Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2);
+    }
+
+    // ================== HINT SYSTEM ==================
+    function showHint() {
+        if (gameOver || inputLocked) return;
+        if (!isPractice && !isPro()) {
+            const todayKey = 'hm_hintsUsed_' + TODAY();
+            const used = parseInt(localStorage.getItem(todayKey) || '0');
+            if (used >= 1) {
+                showToast('💡 Out of free hints. Get Pro for unlimited.');
+                return;
+            }
+            localStorage.setItem(todayKey, String(used + 1));
         }
+        const pair = findAnyValidSwap();
+        if (!pair) {
+            showToast('No valid moves found 🤔');
+            return;
+        }
+        const tiles = document.querySelectorAll('.tile');
+        pair.forEach(i => { if (tiles[i]) tiles[i].classList.add('hint'); });
+        setTimeout(() => {
+            pair.forEach(i => { if (tiles[i]) tiles[i].classList.remove('hint'); });
+        }, 3000);
+        updateHintBtn();
+    }
 
-        function showOverlay(won, stars) {
-            document.getElementById('overlay').classList.add('visible');
-            document.getElementById('overlay-title').textContent = won ? '🎉 You Win!' : '💀 Game Over';
-            document.getElementById('overlay-day').textContent = `Day ${getDayNumber()}`;
-            document.getElementById('overlay-stars').textContent = stars;
-            document.getElementById('overlay-result').textContent = won
-                ? `Solved in ${movesUsed} moves!`
-                : `${targetsCleared}/${TARGET_COUNT} targets cleared`;
-            document.getElementById('share-button').onclick = shareResult;
+    function updateHintBtn() {
+        const btn = document.getElementById('hint-btn');
+        const lbl = document.getElementById('hint-count');
+        if (isPractice || isPro()) {
+            lbl.textContent = '∞';
+            btn.disabled = false;
+        } else {
+            const used = parseInt(localStorage.getItem('hm_hintsUsed_' + TODAY()) || '0');
+            const left = Math.max(0, 1 - used);
+            lbl.textContent = left;
+            btn.disabled = (left === 0);
+        }
+    }
+
+    function resetIdleTimer() {
+        if (idleTimer) clearTimeout(idleTimer);
+        if (gameOver || inputLocked) return;
+        idleTimer = setTimeout(() => {
+            // Auto-pulse a hint after 30s idle (no cost — just visual nudge)
+            const pair = findAnyValidSwap();
+            if (!pair) return;
+            const tiles = document.querySelectorAll('.tile');
+            pair.forEach(i => { if (tiles[i]) tiles[i].classList.add('hint'); });
+            setTimeout(() => {
+                pair.forEach(i => { if (tiles[i]) tiles[i].classList.remove('hint'); });
+            }, 1800);
+        }, 30000);
+    }
+
+    // ================== AUDIO ==================
+    const audio = {
+        ctx: null,
+        enabled: localStorage.getItem('hm_sound') !== '0',
+        ensure() {
+            if (!this.ctx) {
+                try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+            }
+            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+        },
+        tone(freq, dur, type, vol) {
+            if (!this.enabled || !this.ctx) return;
+            const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+            o.type = type || 'sine'; o.frequency.value = freq;
+            g.gain.value = vol || 0.08;
+            o.connect(g); g.connect(this.ctx.destination);
+            const t = this.ctx.currentTime;
+            g.gain.setValueAtTime(vol || 0.08, t);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            o.start(t); o.stop(t + dur);
+        },
+        play(name) {
+            if (!this.enabled) return;
+            this.ensure();
+            if (!this.ctx) return;
+            switch(name) {
+                case 'select': this.tone(440, 0.06, 'triangle', 0.05); break;
+                case 'match': this.tone(660, 0.12, 'triangle', 0.08);
+                    setTimeout(() => this.tone(880, 0.1, 'triangle', 0.07), 60); break;
+                case 'cascade': this.tone(990, 0.1, 'triangle', 0.07);
+                    setTimeout(() => this.tone(1320, 0.12, 'triangle', 0.07), 80); break;
+                case 'invalid': this.tone(180, 0.18, 'sawtooth', 0.06); break;
+                case 'win':
+                    this.tone(523, 0.15, 'triangle', 0.1);
+                    setTimeout(() => this.tone(659, 0.15, 'triangle', 0.1), 130);
+                    setTimeout(() => this.tone(784, 0.18, 'triangle', 0.1), 260);
+                    setTimeout(() => this.tone(1047, 0.3, 'triangle', 0.1), 390);
+                    break;
+                case 'lose':
+                    this.tone(392, 0.2, 'sawtooth', 0.07);
+                    setTimeout(() => this.tone(311, 0.4, 'sawtooth', 0.07), 200);
+                    break;
+            }
+        }
+    };
+
+    function haptic(pattern) {
+        if (localStorage.getItem('hm_haptics') === '0') return;
+        if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
+    // ================== PERSISTENCE ==================
+    function saveTodayResult(result) {
+        localStorage.setItem('hm_todayResult', JSON.stringify({ date: TODAY(), ...result }));
+        // Append to history (cap 365)
+        let hist = {};
+        try { hist = JSON.parse(localStorage.getItem('hm_history') || '{}'); } catch {}
+        hist[TODAY()] = { stars: result.stars, moves: result.moves, won: result.won };
+        const keys = Object.keys(hist).sort();
+        if (keys.length > 365) for (const k of keys.slice(0, keys.length - 365)) delete hist[k];
+        localStorage.setItem('hm_history', JSON.stringify(hist));
+    }
+
+    function loadTodayResult() {
+        try {
+            const r = JSON.parse(localStorage.getItem('hm_todayResult') || 'null');
+            return r && r.date === TODAY() ? r : null;
+        } catch { return null; }
+    }
+
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem('hm_history') || '{}'); }
+        catch { return {}; }
+    }
+
+    function updateStreak(won) {
+        const today = TODAY();
+        const y = new Date(); y.setUTCDate(y.getUTCDate() - 1);
+        const yesterdayStr = y.toISOString().split('T')[0];
+        let lastPlayed = localStorage.getItem('hm_lastPlayed') || '';
+        let streak = parseInt(localStorage.getItem('hm_streak') || '0');
+        let maxStreak = parseInt(localStorage.getItem('hm_maxStreak') || '0');
+        let total = parseInt(localStorage.getItem('hm_total') || '0');
+
+        if (lastPlayed === yesterdayStr) streak = won ? streak + 1 : 0;
+        else if (lastPlayed !== today) streak = won ? 1 : 0;
+        if (won) maxStreak = Math.max(maxStreak, streak);
+
+        localStorage.setItem('hm_lastPlayed', today);
+        localStorage.setItem('hm_streak', streak);
+        localStorage.setItem('hm_maxStreak', maxStreak);
+        localStorage.setItem('hm_total', total + 1);
+        document.getElementById('streak').textContent = streak;
+        return streak;
+    }
+
+    // ================== ACHIEVEMENTS ==================
+    function checkAchievements(streak) {
+        const fired = JSON.parse(localStorage.getItem('hm_badges') || '[]');
+        const milestones = [
+            { id: 'first', label: '🎉 First win!', when: () => true },
+            { id: 'streak3', label: '🔥 3-day streak', when: () => streak >= 3 },
+            { id: 'streak7', label: '🌟 7-day streak — A WEEK!', when: () => streak >= 7 },
+            { id: 'streak30', label: '👑 30-day streak — Royalty', when: () => streak >= 30 },
+            { id: 'streak100', label: '🏆 100-day streak — LEGEND', when: () => streak >= 100 },
+        ];
+        for (const m of milestones) {
+            if (!fired.includes(m.id) && m.when()) {
+                fired.push(m.id);
+                setTimeout(() => showToast(m.label), 1200);
+            }
+        }
+        localStorage.setItem('hm_badges', JSON.stringify(fired));
+    }
+
+    function showToast(text) {
+        const t = document.getElementById('toast');
+        t.textContent = text;
+        t.classList.add('visible');
+        setTimeout(() => t.classList.remove('visible'), 3500);
+    }
+
+    // ================== SHARE ==================
+    function shareResult() {
+        const today = loadTodayResult();
+        const stars = today ? today.stars : (targetsCleared >= TARGET_COUNT ? getStars(movesUsed) : '💀');
+        const dayN = dayNumber(TODAY());
+        const url = 'https://thehivemakes.github.io/hive-match/';
+        const text = targetsCleared >= TARGET_COUNT
+            ? `🐝 Hive Match — Day ${dayN}\n${stars} Solved in ${movesUsed} moves!\nPlay: ${url}`
+            : `🐝 Hive Match — Day ${dayN}\n💀 Out of moves (${targetsCleared}/${TARGET_COUNT} targets)\nPlay: ${url}`;
+        const btn = document.getElementById('share-button');
+        if (navigator.share) {
+            navigator.share({ title: 'Hive Match', text }).catch(() => {
+                copyToClipboard(text, btn);
+            });
+        } else {
+            copyToClipboard(text, btn);
+        }
+    }
+    function copyToClipboard(text, btn) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                if (btn) {
+                    const orig = btn.textContent; btn.textContent = '✅ Copied!';
+                    setTimeout(() => { btn.textContent = orig; }, 1800);
+                }
+            }).catch(() => alert(text));
+        } else {
+            alert(text);
+        }
+    }
+
+    // ================== OVERLAY / COUNTDOWN ==================
+    let countdownInterval = null;
+    function showOverlay(won, stars) {
+        document.getElementById('overlay').classList.add('visible');
+        document.getElementById('overlay-title').textContent = won
+            ? (isPractice ? '🎉 Nice solve!' : '🎉 You Win!')
+            : (isPractice ? '😅 Out of moves' : '💀 Game Over');
+        document.getElementById('overlay-day').textContent = isPractice ? 'Practice round' : `Day ${dayNumber(TODAY())}`;
+        document.getElementById('overlay-stars').textContent = stars;
+        document.getElementById('overlay-result').textContent = won
+            ? `Solved in ${movesUsed} moves!`
+            : `${targetsCleared}/${TARGET_COUNT} targets cleared`;
+        document.getElementById('share-button').onclick = shareResult;
+        document.getElementById('overlay-stats').onclick = openStats;
+
+        if (isPractice) {
+            document.getElementById('streak-display').textContent = '';
+            document.getElementById('countdown').innerHTML = '';
+            // Replace share with "next practice" button via swap
+            const shareBtn = document.getElementById('share-button');
+            shareBtn.textContent = 'Play another';
+            shareBtn.onclick = () => { closeOverlay(); startPractice(); };
+        } else {
             const streakVal = localStorage.getItem('hm_streak') || '0';
             const maxVal = localStorage.getItem('hm_maxStreak') || '0';
             document.getElementById('streak-display').textContent = `🔥 ${streakVal} day streak · 🏆 Best: ${maxVal}`;
+            document.getElementById('share-button').textContent = 'Share';
             startCountdown();
         }
+    }
+    function closeOverlay() {
+        document.getElementById('overlay').classList.remove('visible');
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    }
+    function startCountdown() {
+        if (countdownInterval) clearInterval(countdownInterval);
+        function tick() {
+            const now = new Date();
+            const midnight = new Date(TODAY() + 'T00:00:00Z');
+            midnight.setUTCDate(midnight.getUTCDate() + 1);
+            const diff = midnight - now;
+            const h = String(Math.floor(diff/3600000)).padStart(2,'0');
+            const m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
+            const s = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
+            document.getElementById('countdown').textContent = `Next puzzle in ${h}:${m}:${s}`;
+        }
+        tick();
+        countdownInterval = setInterval(tick, 1000);
+    }
 
-        function shareResult() {
-            const today = loadTodayResult();
-            const stars = today ? today.stars : (targetsCleared >= TARGET_COUNT ? getStars(movesUsed) : '💀');
-            const dayN = getDayNumber();
-            const text = targetsCleared >= TARGET_COUNT
-                ? `🐝 Hive Match — Day ${dayN}\n${stars} Solved in ${movesUsed} moves!\nPlay: https://thehivemakes.github.io/hive-match/`
-                : `🐝 Hive Match — Day ${dayN}\n💀 Out of moves (${targetsCleared}/${TARGET_COUNT} targets)\nPlay: https://thehivemakes.github.io/hive-match/`;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.getElementById('share-button');
-                btn.textContent = '✅ Copied!';
-                setTimeout(() => { btn.textContent = 'Share Result'; }, 2000);
-            }).catch(() => { alert(text); });
+    // ================== STATS MODAL ==================
+    function openStats() {
+        renderStats();
+        document.getElementById('stats-modal-bg').classList.add('visible');
+    }
+    function renderStats() {
+        const hist = getHistory();
+        const entries = Object.entries(hist);
+        const wins = entries.filter(([,r]) => r.won);
+        document.getElementById('s-played').textContent = entries.length;
+        document.getElementById('s-winrate').textContent = entries.length
+            ? Math.round(100 * wins.length / entries.length) + '%' : '0%';
+        document.getElementById('s-streak').textContent = localStorage.getItem('hm_streak') || '0';
+        document.getElementById('s-max').textContent = localStorage.getItem('hm_maxStreak') || '0';
+
+        // Move distribution: bucket wins by stars
+        const dist = { '⭐⭐⭐': 0, '⭐⭐': 0, '⭐': 0, '💀': 0 };
+        for (const [, r] of entries) {
+            const k = r.stars in dist ? r.stars : '💀';
+            dist[k]++;
+        }
+        const max = Math.max(1, ...Object.values(dist));
+        const distEl = document.getElementById('move-distribution');
+        distEl.innerHTML = '';
+        for (const k of ['⭐⭐⭐', '⭐⭐', '⭐', '💀']) {
+            const row = document.createElement('div'); row.className = 'row';
+            row.innerHTML = `<span style="width:54px;">${k}</span><div class="bar"><div class="bar-fill" style="width:${(dist[k]/max)*100}%"></div></div><span style="width:24px; text-align:right;">${dist[k]}</span>`;
+            distEl.appendChild(row);
         }
 
-        let countdownInterval = null;
-        function startCountdown() {
-            if (countdownInterval) clearInterval(countdownInterval);
-            function tick() {
-                const now = new Date();
-                const midnight = new Date(getTodayUTC() + 'T00:00:00Z');
-                midnight.setUTCDate(midnight.getUTCDate() + 1);
-                const diff = midnight - now;
-                const h = String(Math.floor(diff/3600000)).padStart(2,'0');
-                const m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
-                const s = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
-                document.getElementById('countdown').textContent = `Next puzzle in ${h}:${m}:${s}`;
+        // 30-day heatmap: most recent 30 days from today, oldest first
+        const hm = document.getElementById('heatmap');
+        hm.innerHTML = '';
+        const today = TODAY();
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(); d.setUTCDate(d.getUTCDate() - i);
+            const key = d.toISOString().split('T')[0];
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.title = key;
+            const r = hist[key];
+            if (r) {
+                cell.classList.add(r.won ? 'won' : 'played');
+                cell.title += r.won ? ` — ${r.stars}` : ' — missed';
             }
-            tick();
-            countdownInterval = setInterval(tick, 1000);
+            if (key === today) cell.classList.add('today');
+            cell.onclick = () => loadArchive(key);
+            hm.appendChild(cell);
         }
 
-        function init() {
-            const streak = parseInt(localStorage.getItem('hm_streak') || '0');
-            document.getElementById('day-number').textContent = getDayNumber();
-            document.getElementById('streak').textContent = streak;
+        document.getElementById('archive-date').max = today;
 
-            const prior = loadTodayResult();
-            if (prior) {
-                // Already played today — show result without allowing replay
-                generateBoard();
-                renderBoard();
-                gameOver = true;
-                movesUsed = prior.moves;
-                targetsCleared = prior.won ? TARGET_COUNT : 0;
-                showOverlay(prior.won, prior.stars);
-                return;
-            }
-            generateBoard();
+        // Theme picker
+        const cur = localStorage.getItem('hm_theme') || 'default';
+        document.querySelectorAll('.theme-swatch').forEach(s => {
+            s.classList.toggle('active', s.dataset.key === cur);
+        });
+
+        // Sound/haptics labels
+        document.getElementById('toggle-sound').textContent = '🔊 Sound: ' + (localStorage.getItem('hm_sound') === '0' ? 'off' : 'on');
+        document.getElementById('toggle-haptics').textContent = '📳 Haptics: ' + (localStorage.getItem('hm_haptics') === '0' ? 'off' : 'on');
+
+        updateProUI();
+    }
+
+    function updateProUI() {
+        const status = document.getElementById('pro-status');
+        if (!status) return;
+        if (isPro()) {
+            status.textContent = '✨ Pro unlocked. Thank you for supporting Hive Match.';
+            document.getElementById('pro-buy').style.display = 'none';
+            document.getElementById('pro-redeem').style.display = 'none';
+        } else {
+            status.textContent = '';
+            document.getElementById('pro-buy').style.display = '';
+            document.getElementById('pro-redeem').style.display = '';
+        }
+    }
+
+    function loadArchive(date) {
+        if (date > TODAY()) { showToast('That day hasn\'t arrived yet.'); return; }
+        if (date === TODAY()) { closeAllModals(); return; }
+        // Load past day's puzzle as practice (does NOT change daily streak)
+        isPractice = true;
+        document.body.classList.add('practice');
+        document.getElementById('practice-banner').textContent =
+            '📅 Replaying ' + date + ' (Day ' + dayNumber(date) + ') — does not affect streak';
+        movesUsed = 0; targetsCleared = 0; selectedIdx = null; gameOver = false; inputLocked = false;
+        generateBoard(dateToSeed(date));
+        renderBoard();
+        closeAllModals();
+        updateHintBtn();
+    }
+
+    // ================== THEME ==================
+    function applyTheme(key) {
+        if (PRO_THEMES.has(key) && !isPro()) {
+            showToast('🔒 ' + key.charAt(0).toUpperCase() + key.slice(1) + ' is a Pro theme.');
+            return;
+        }
+        if (key === 'default') document.body.removeAttribute('data-theme');
+        else document.body.setAttribute('data-theme', key);
+        localStorage.setItem('hm_theme', key);
+        document.querySelectorAll('.theme-swatch').forEach(s => {
+            s.classList.toggle('active', s.dataset.key === key);
+        });
+        // Update theme-color meta for status bar
+        const themeColors = { default:'#0d0d1a', sunset:'#2b1932', honey:'#2a1a04', mint:'#062028' };
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', themeColors[key] || '#0d0d1a');
+    }
+
+    // ================== MODES ==================
+    function startDaily() {
+        isPractice = false;
+        document.body.classList.remove('practice');
+        document.getElementById('mode-daily').classList.add('active');
+        document.getElementById('mode-practice').classList.remove('active');
+        movesUsed = 0; targetsCleared = 0; selectedIdx = null; gameOver = false; inputLocked = false;
+        const prior = loadTodayResult();
+        generateBoard(dateToSeed(TODAY()));
+        if (prior) {
             renderBoard();
+            gameOver = true;
+            movesUsed = prior.moves;
+            targetsCleared = prior.won ? TARGET_COUNT : 0;
+            showOverlay(prior.won, prior.stars);
+        } else {
+            renderBoard();
+            updateHintBtn();
+            resetIdleTimer();
+        }
+    }
+
+    function startPractice() {
+        isPractice = true;
+        document.body.classList.add('practice');
+        document.getElementById('practice-banner').textContent =
+            '🎯 Practice Mode — does not affect daily streak';
+        document.getElementById('mode-daily').classList.remove('active');
+        document.getElementById('mode-practice').classList.add('active');
+        movesUsed = 0; targetsCleared = 0; selectedIdx = null; gameOver = false; inputLocked = false;
+        practiceSeed = Math.floor(Math.random() * 4294967296);
+        generateBoard(practiceSeed);
+        renderBoard();
+        closeOverlay();
+        updateHintBtn();
+        resetIdleTimer();
+    }
+
+    // ================== MODALS ==================
+    function closeAllModals() {
+        document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('visible'));
+    }
+
+    // ================== PRO UNLOCK ==================
+    function tryUnlockFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('unlock');
+        if (code && PRO_CODES.has(code.trim().toUpperCase())) {
+            setPro(true);
+            showToast('✨ Pro unlocked! Welcome.');
+            // Clean URL so the code isn't permanently in browser history bar
+            history.replaceState(null, '', window.location.pathname);
+        }
+    }
+    function tryRedeem() {
+        const input = document.getElementById('redeem-code');
+        const status = document.getElementById('redeem-status');
+        const code = (input.value || '').trim().toUpperCase();
+        if (PRO_CODES.has(code)) {
+            setPro(true);
+            status.style.color = 'var(--gold)';
+            status.textContent = '✨ Pro unlocked! Enjoy.';
+            setTimeout(() => closeAllModals(), 1200);
+        } else {
+            status.style.color = '#e74c3c';
+            status.textContent = 'That code didn\'t work. Double-check and try again.';
+        }
+    }
+
+    // ================== EVENTS ==================
+    function setupEvents() {
+        document.getElementById('help-btn').onclick = () => {
+            document.getElementById('help-modal').classList.add('visible');
+        };
+        document.getElementById('stats-btn').onclick = openStats;
+        document.getElementById('hint-btn').onclick = showHint;
+        document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeAllModals);
+        document.querySelectorAll('.modal-backdrop').forEach(bg => {
+            bg.addEventListener('click', e => {
+                if (e.target === bg && bg.id !== 'overlay') bg.classList.remove('visible');
+            });
+        });
+        document.getElementById('welcome-start').onclick = () => {
+            localStorage.setItem('hm_seenWelcome', '1');
+            closeAllModals();
+            audio.ensure(); // unlock audio context on user gesture
+        };
+        document.getElementById('mode-daily').onclick = startDaily;
+        document.getElementById('mode-practice').onclick = startPractice;
+        document.getElementById('archive-go').onclick = () => {
+            const d = document.getElementById('archive-date').value;
+            if (d) loadArchive(d);
+        };
+        document.querySelectorAll('.theme-swatch').forEach(s => {
+            s.onclick = () => applyTheme(s.dataset.key);
+        });
+        document.getElementById('toggle-sound').onclick = () => {
+            const cur = localStorage.getItem('hm_sound') !== '0';
+            localStorage.setItem('hm_sound', cur ? '0' : '1');
+            audio.enabled = !cur;
+            document.getElementById('toggle-sound').textContent = '🔊 Sound: ' + (cur ? 'off' : 'on');
+        };
+        document.getElementById('toggle-haptics').onclick = () => {
+            const cur = localStorage.getItem('hm_haptics') !== '0';
+            localStorage.setItem('hm_haptics', cur ? '0' : '1');
+            document.getElementById('toggle-haptics').textContent = '📳 Haptics: ' + (cur ? 'off' : 'on');
+        };
+        document.getElementById('pro-buy').onclick = () => window.open(STRIPE_URL, '_blank');
+        document.getElementById('pro-redeem').onclick = () => {
+            closeAllModals();
+            document.getElementById('redeem-modal').classList.add('visible');
+            setTimeout(() => document.getElementById('redeem-code').focus(), 100);
+        };
+        document.getElementById('redeem-go').onclick = tryRedeem;
+        document.getElementById('redeem-code').addEventListener('keydown', e => {
+            if (e.key === 'Enter') tryRedeem();
+        });
+        document.getElementById('tip-jar').onclick = (e) => { e.preventDefault(); window.open(TIP_JAR_URL, '_blank'); };
+        document.getElementById('footer-pro').onclick = (e) => {
+            e.preventDefault();
+            openStats();
+            setTimeout(() => {
+                const m = document.getElementById('stats-modal');
+                if (m) m.scrollTop = m.scrollHeight;
+            }, 100);
+        };
+
+        // Audio context unlock on first user gesture
+        const unlock = () => { audio.ensure(); document.removeEventListener('pointerdown', unlock); };
+        document.addEventListener('pointerdown', unlock);
+    }
+
+    // ================== PWA ==================
+    function registerSW() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    }
+
+    // ================== INIT ==================
+    function init() {
+        // Theme
+        const savedTheme = localStorage.getItem('hm_theme') || 'default';
+        if (savedTheme && savedTheme !== 'default') {
+            // Don't apply pro theme if no longer pro
+            if (PRO_THEMES.has(savedTheme) && !isPro()) localStorage.setItem('hm_theme', 'default');
+            else applyTheme(savedTheme);
+        }
+        // Pro state
+        if (isPro()) document.body.classList.add('pro');
+        tryUnlockFromURL();
+
+        // Day display
+        document.getElementById('day-number').textContent = dayNumber(TODAY());
+        document.getElementById('streak').textContent = localStorage.getItem('hm_streak') || '0';
+
+        setupEvents();
+
+        // First-run welcome
+        if (!localStorage.getItem('hm_seenWelcome')) {
+            document.getElementById('welcome-modal').classList.add('visible');
         }
 
-        init();
+        startDaily();
+        registerSW();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
